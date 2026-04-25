@@ -25,5 +25,8 @@
     "redis": "^4.7.1",
     "socket.io": "^4.8.0",
     "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@express-rate-limit/tsconfig": "^1.0.2"
   }
 }

@@ -32,6 +32,15 @@ async function shutdown(signal) {
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
+httpServer.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${env.port} is already in use. Stop the process using it or set PORT to an available port.`);
+    process.exit(1);
+  }
+  console.error('HTTP server error', err);
+  process.exit(1);
+});
+
 async function bootstrap() {
   await connectDatabase();
   if (env.skipAuth) {
