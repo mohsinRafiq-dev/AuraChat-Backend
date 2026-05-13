@@ -32,8 +32,16 @@ export const profile = asyncHandler(async (req, res) => {
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
-  const { avatarUrl } = req.body;
-  const updated = await userService.updateUserProfile(req.userId, { avatarUrl });
+  const { avatarUrl, username, bio, statusMessage, phone, lastSeenVisibility, avatarVisibility } = req.body;
+  const updated = await userService.updateUserProfile(req.userId, {
+    avatarUrl,
+    username,
+    bio,
+    statusMessage,
+    phone,
+    lastSeenVisibility,
+    avatarVisibility
+  });
   if (!updated) {
     return res.status(404).json({ error: 'User not found' });
   }
