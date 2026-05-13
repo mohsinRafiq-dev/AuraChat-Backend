@@ -6,7 +6,9 @@ import { AppError } from '../utils/AppError.js';
 const SALT_ROUNDS = 10;
 
 export async function createUser({ email, password, username }) {
-  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+  const passwordHash = password
+    ? await bcrypt.hash(password, SALT_ROUNDS)
+    : await bcrypt.hash(crypto.randomBytes(32).toString('hex'), SALT_ROUNDS);
   try {
     return await User.create({
       email: email.toLowerCase(),
@@ -29,14 +31,22 @@ export async function findUserById(id) {
   return User.findById(id);
 }
 
-/** Lookup by email without loading `passwordHash` (for starting a DM). */
 export async function findPublicUserByEmail(email) {
   return User.findOne({ email: email.toLowerCase().trim() });
 }
 
-/**
- * Links `googleSub` to an existing email account or creates a new user (random password hash; password login unused).
- */
+export async function searchUsers(query, currentUserId) {
+  if (!query?.trim()) return [];
+  const escaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(escaped, 'i');
+  return User.find({
+    _id: { $ne: currentUserId },
+    $or: [{ username: regex }, { email: regex }]
+  })
+    .limit(20)
+    .select('email username avatarUrl bio statusMessage lastSeen phone');
+}
+
 export async function findOrCreateUserFromGoogle({ sub, email, name }) {
   if (!email) {
     throw AppError.badRequest('Google account has no email');
@@ -78,11 +88,33 @@ export async function assertPassword(userDoc, password) {
 
 export async function updateUserProfile(userId, updates) {
   const allowed = {};
-  if (updates.avatarUrl !== undefined) {
-    allowed.avatarUrl = updates.avatarUrl;
+  const fields = ['avatarUrl', 'username', 'bio', 'statusMessage', 'phone', 'lastSeenVisibility', 'avatarVisibility'];
+  for (const f of fields) {
+    if (updates[f] !== undefined) allowed[f] = updates[f];
   }
   if (Object.keys(allowed).length === 0) {
     throw AppError.badRequest('No profile updates provided');
   }
   return User.findByIdAndUpdate(userId, { $set: allowed }, { new: true });
+}
+
+export async function blockUser(userId, targetId) {
+  if (String(userId) === String(targetId)) {
+    throw AppError.badRequest('Cannot block yourself');
+  }
+  await User.findByIdAndUpdate(userId, { $addToSet: { blockedUsers: targetId } });
+}
+
+export async function unblockUser(userId, targetId) {
+  await User.findByIdAndUpdate(userId, { $pull: { blockedUsers: targetId } });
+}
+
+export async function getBlockedUsers(userId) {
+  const user = await User.findById(userId).populate('blockedUsers', 'email username avatarUrl bio statusMessage lastSeen phone');
+  if (!user) throw AppError.notFound('User not found');
+  return user.blockedUsers || [];
+}
+
+export async function updateLastSeen(userId) {
+  await User.findByIdAndUpdate(userId, { lastSeen: new Date() });
 }
