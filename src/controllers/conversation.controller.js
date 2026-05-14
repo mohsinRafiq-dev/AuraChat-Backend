@@ -38,3 +38,23 @@ export const remove = asyncHandler(async (req, res) => {
   await conversationService.deleteConversationForUser(conversationId, req.userId);
   res.status(204).end();
 });
+
+export const archive = asyncHandler(async (req, res) => {
+  const { conversationId } = req.params;
+  await conversationService.archiveConversation(conversationId, req.userId);
+  res.json({ success: true });
+});
+
+export const unarchive = asyncHandler(async (req, res) => {
+  const { conversationId } = req.params;
+  await conversationService.unarchiveConversation(conversationId, req.userId);
+  res.json({ success: true });
+});
+
+export const setDisappearing = asyncHandler(async (req, res) => {
+  const { conversationId } = req.params;
+  const { enabled, duration } = req.body;
+  if (enabled === undefined) throw AppError.badRequest('enabled is required');
+  await conversationService.setDisappearingMessages(conversationId, req.userId, { enabled, duration });
+  res.json({ success: true });
+});
