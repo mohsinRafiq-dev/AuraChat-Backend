@@ -5,6 +5,7 @@ const router = Router();
 
 router.get('/search', userController.searchUsers);
 router.get('/blocked', userController.getBlockedUsers);
+router.patch('/me', userController.updateProfile);
 router.get('/:id', userController.getUserProfile);
 router.post('/:id/block', userController.blockUser);
 router.delete('/:id/block', userController.unblockUser);

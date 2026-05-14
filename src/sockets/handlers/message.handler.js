@@ -83,6 +83,64 @@ export function registerMessageHandlers(io, socket) {
     }
   });
 
+  // ── edit_message ──────────────────────────────────────────────────────────
+  socket.on(SOCKET_EVENTS.EDIT_MESSAGE, async (payload, ack) => {
+    const respond = ackOrNoop(ack);
+    try {
+      const { messageId, text } = payload || {};
+      if (!messageId || !text?.trim()) {
+        return respond({ success: false, error: 'messageId and text are required' });
+      }
+      const msg = await messageService.editMessage(messageId, socket.userId, text);
+      const serialized = serializeMessage(msg);
+      io.to(`conversation:${serialized.conversationId}`).emit(SOCKET_EVENTS.MESSAGE_EDITED, serialized);
+      respond({ success: true, message: serialized });
+    } catch (err) {
+      if (err instanceof AppError) return respond({ success: false, error: err.message, code: err.statusCode });
+      console.error('edit_message error', err);
+      respond({ success: false, error: 'Internal error' });
+    }
+  });
+
+  // ── delete_message ────────────────────────────────────────────────────────
+  socket.on(SOCKET_EVENTS.DELETE_MESSAGE, async (payload, ack) => {
+    const respond = ackOrNoop(ack);
+    try {
+      const { messageId, forEveryone } = payload || {};
+      if (!messageId) return respond({ success: false, error: 'messageId is required' });
+      const msg = await messageService.deleteMessage(messageId, socket.userId, Boolean(forEveryone));
+      const serialized = serializeMessage(msg);
+      if (forEveryone) {
+        io.to(`conversation:${serialized.conversationId}`).emit(SOCKET_EVENTS.MESSAGE_DELETED, serialized);
+      } else {
+        respond({ success: true, message: serialized });
+        return;
+      }
+      respond({ success: true, message: serialized });
+    } catch (err) {
+      if (err instanceof AppError) return respond({ success: false, error: err.message, code: err.statusCode });
+      console.error('delete_message error', err);
+      respond({ success: false, error: 'Internal error' });
+    }
+  });
+
+  // ── react_message ─────────────────────────────────────────────────────────
+  socket.on(SOCKET_EVENTS.REACT_MESSAGE, async (payload, ack) => {
+    const respond = ackOrNoop(ack);
+    try {
+      const { messageId, emoji } = payload || {};
+      if (!messageId) return respond({ success: false, error: 'messageId is required' });
+      const msg = await messageService.reactToMessage(messageId, socket.userId, emoji ?? '');
+      const serialized = serializeMessage(msg);
+      io.to(`conversation:${serialized.conversationId}`).emit(SOCKET_EVENTS.MESSAGE_REACTED, serialized);
+      respond({ success: true, message: serialized });
+    } catch (err) {
+      if (err instanceof AppError) return respond({ success: false, error: err.message, code: err.statusCode });
+      console.error('react_message error', err);
+      respond({ success: false, error: 'Internal error' });
+    }
+  });
+
   // ── mark_read ─────────────────────────────────────────────────────────────
   // Fired by the recipient when they open a conversation.
   socket.on(SOCKET_EVENTS.MARK_READ, async ({ conversationId }) => {
