@@ -33,3 +33,8 @@ export const getBlockedUsers = asyncHandler(async (req, res) => {
   const users = await userService.getBlockedUsers(req.userId);
   res.json({ users: users.map((u) => serializeUser(u)) });
 });
+
+export const updateProfile = asyncHandler(async (req, res) => {
+  const user = await userService.updateUserProfile(req.userId, req.body);
+  res.json({ user: serializeUser(user) });
+});

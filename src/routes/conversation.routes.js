@@ -8,5 +8,8 @@ const router = Router();
 router.get('/', conversationController.list);
 router.post('/', validateBody(createConversationSchema), conversationController.create);
 router.delete('/:conversationId', conversationController.remove);
+router.post('/:conversationId/archive', conversationController.archive);
+router.delete('/:conversationId/archive', conversationController.unarchive);
+router.patch('/:conversationId/disappearing', conversationController.setDisappearing);
 
 export default router;
