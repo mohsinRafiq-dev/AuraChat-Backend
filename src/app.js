@@ -13,6 +13,17 @@ export function createApp() {
   const app = express();
 
   app.disable('x-powered-by');
+
+  /**
+   * Behind Nginx/ALB, Express sees the proxy's IP on every request. Without this,
+   * `express-rate-limit` buckets all users together and one client tripping the
+   * auth limiter locks out everyone. `TRUST_PROXY` is the number of proxies in
+   * front of the app (1 for a single Nginx; 2 if Nginx sits behind an ALB).
+   */
+  if (env.trustProxy > 0) {
+    app.set('trust proxy', env.trustProxy);
+  }
+
   app.use(helmet());
   app.use(
     cors({

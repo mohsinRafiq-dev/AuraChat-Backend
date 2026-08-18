@@ -1,0 +1,68 @@
+# systemd unit for the AuraChat backend.
+#
+# Chosen over PM2 deliberately: no extra dependency, restarts survive reboots
+# without a separate startup hook, and logs land in journalctl alongside
+# everything else on the box.
+#
+# Install:
+#   sudo cp deploy/aurachat-api.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now aurachat-api
+#
+# Operate:
+#   sudo systemctl status aurachat-api
+#   sudo systemctl restart aurachat-api
+#   journalctl -u aurachat-api -f          # live logs
+#   journalctl -u aurachat-api --since "1 hour ago"
+
+[Unit]
+Description=AuraChat API (Express + Socket.IO)
+Documentation=https://github.com/mohsinRafiq-dev/AuraChat-Backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Adjust to match the box. On Amazon Linux the default login user is ec2-user;
+# on Ubuntu images it is ubuntu.
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/srv/aurachat/backend
+
+# Secrets live in a root-owned file, not in this unit — systemd unit files are
+# world-readable and would otherwise leak JWT_SECRET and the Atlas password.
+#   sudo install -o root -g ubuntu -m 640 .env /srv/aurachat/backend/.env
+EnvironmentFile=/srv/aurachat/backend/.env
+Environment=NODE_ENV=production
+
+ExecStart=/usr/bin/node src/server.js
+
+# server.js already handles SIGTERM: it drains sockets, closes Redis and Mongo,
+# then exits. Give it room to finish rather than killing it mid-shutdown.
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+Restart=always
+RestartSec=3
+# Stop trying if it crash-loops, so a bad deploy fails loudly instead of
+# hammering Atlas with reconnects.
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=aurachat-api
+
+# Hardening — the app only needs to read its own directory and reach the network.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/aurachat/backend
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

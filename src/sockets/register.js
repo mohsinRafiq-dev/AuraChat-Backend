@@ -12,7 +12,10 @@ export function initSockets(httpServer) {
       origin: env.corsOrigin === '*' ? true : env.corsOrigin,
       credentials: true
     },
-    transports: ['websocket']
+    // WebSocket is preferred, but polling must stay available as a fallback:
+    // some corporate proxies and mobile networks block WS upgrades outright,
+    // and websocket-only means those clients cannot connect at all.
+    transports: ['websocket', 'polling']
   });
 
   io.use(socketAuthMiddleware);
