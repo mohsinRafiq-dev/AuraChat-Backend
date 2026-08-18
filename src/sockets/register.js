@@ -15,7 +15,23 @@ export function initSockets(httpServer) {
     // WebSocket is preferred, but polling must stay available as a fallback:
     // some corporate proxies and mobile networks block WS upgrades outright,
     // and websocket-only means those clients cannot connect at all.
-    transports: ['websocket', 'polling']
+    transports: ['websocket', 'polling'],
+
+    /**
+     * Presence responsiveness.
+     *
+     * A clean tab close sends a disconnect immediately, but a closed laptop,
+     * dropped Wi-Fi or killed process sends nothing — the server only notices
+     * when a ping goes unanswered. Worst-case detection is roughly
+     * pingInterval + pingTimeout, so the defaults (25s + 20s) left a user
+     * showing as "online" for up to 45 seconds after they vanished.
+     *
+     * 10s + 5s brings that to ~15s worst case, usually faster, at the cost of
+     * a few extra bytes per client per 10s. Lower these further for snappier
+     * presence; raise them to be kinder to mobile batteries.
+     */
+    pingInterval: 10_000,
+    pingTimeout: 5_000
   });
 
   io.use(socketAuthMiddleware);

@@ -3,6 +3,7 @@ import { Message } from '../../models/Message.model.js';
 import { SOCKET_EVENTS } from '../../constants/socketEvents.js';
 import { presenceRegistry } from '../../services/presence.service.js';
 import { markDelivered } from '../../services/message.service.js';
+import { updateLastSeen } from '../../services/user.service.js';
 import { registerMessageHandlers } from './message.handler.js';
 import { registerTypingHandlers } from './typing.handler.js';
 import { registerAssistantHandlers } from './assistant.handler.js';
@@ -93,12 +94,25 @@ export async function wireConnection(io, socket) {
   socket.on('disconnect', async (_reason) => {
     presenceRegistry.removeSocket(socket.id);
 
-    // Only broadcast offline if the user has no other active sockets
+    // Only go offline once the user's *last* socket closes — a second tab or
+    // a phone still counts as online.
     if (!presenceRegistry.isUserOnline(userId)) {
+      const lastSeen = new Date();
       try {
+        // Persist first, so a partner who loads the app a moment later reads
+        // the same timestamp the live event carried.
+        await updateLastSeen(userId).catch((err) =>
+          console.error('lastSeen persist failed', err)
+        );
+
         const offlinePartnerIds = await getConversationPartnerIds(userId);
+        const iso = lastSeen.toISOString();
         for (const partnerId of offlinePartnerIds) {
-          io.to(`user:${partnerId}`).emit(SOCKET_EVENTS.USER_OFFLINE, { userId });
+          io.to(`user:${partnerId}`).emit(SOCKET_EVENTS.USER_OFFLINE, { userId, lastSeen: iso });
+          // Carries the timestamp so peers can render "last seen just now"
+          // immediately, instead of falling back to a bare "offline" until
+          // the next full conversation fetch.
+          io.to(`user:${partnerId}`).emit(SOCKET_EVENTS.USER_LAST_SEEN, { userId, lastSeen: iso });
         }
       } catch (err) {
         console.error('presence offline broadcast failed', err);
