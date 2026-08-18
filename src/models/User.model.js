@@ -92,7 +92,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-userSchema.index({ email: 1 });
+// email is already indexed by `unique: true` on the field definition above
 userSchema.index({ username: 'text' });
 
 export const User = mongoose.model('User', userSchema);
