@@ -32,14 +32,42 @@ export const listMessagesQuerySchema = z.object({
 });
 
 /** Payload from the browser for `send_message` (after socket auth, sender is trusted). */
-export const sendMessageSocketSchema = z.object({
-  conversationId: z.string().min(1),
-  recipientId: z.string().min(1),
-  senderId: z.string().optional(),
-  text: z.string().trim().min(1).max(8000),
-  clientId: z.string().trim().max(128).optional(),
-  createdAt: z.union([z.string(), z.date()]).optional()
-});
+/**
+ * Media is currently inlined as a base64 data URL rather than uploaded to
+ * object storage, so the ceiling here is what a single Mongo document can
+ * comfortably carry. ~2MB of binary becomes ~2.7MB of base64; the cap leaves
+ * headroom under the 16MB document limit and under the socket buffer.
+ */
+const MAX_MEDIA_URL = 3_000_000;
+
+export const sendMessageSocketSchema = z
+  .object({
+    conversationId: z.string().min(1),
+    recipientId: z.string().min(1),
+    senderId: z.string().optional(),
+    // Not `.min(1)`: a voice note or a photo without a caption is a valid
+    // message. Requiring text made every media-only send fail validation.
+    text: z.string().trim().max(8000).optional().default(''),
+    clientId: z.string().trim().max(128).optional(),
+    createdAt: z.union([z.string(), z.date()]).optional(),
+
+    // These were absent from the schema entirely, so `.parse()` stripped them
+    // and media never reached the service — which has always accepted them.
+    type: z
+      .enum(['text', 'image', 'video', 'audio', 'file', 'location', 'contact', 'sticker', 'voice'])
+      .optional(),
+    mediaUrl: z.string().trim().max(MAX_MEDIA_URL).optional(),
+    mediaThumbnail: z.string().trim().max(MAX_MEDIA_URL).optional(),
+    mediaType: z.string().trim().max(128).optional(),
+    mediaName: z.string().trim().max(256).optional(),
+    mediaSize: z.number().int().nonnegative().optional(),
+    mediaDuration: z.number().nonnegative().optional(),
+    replyTo: z.string().trim().max(64).optional()
+  })
+  .refine((d) => (d.text && d.text.length > 0) || Boolean(d.mediaUrl), {
+    message: 'A message must have text or media',
+    path: ['text']
+  });
 
 export const updateProfileSchema = z.object({
   avatarUrl: z.string().trim().min(1).max(10000)

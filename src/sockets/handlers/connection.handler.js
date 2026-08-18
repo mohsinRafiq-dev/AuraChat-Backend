@@ -35,6 +35,20 @@ export async function wireConnection(io, socket) {
   presenceRegistry.addSocket(userId, socket.id);
   socket.join(`user:${userId}`);
 
+  /**
+   * Attach event handlers before any awaiting.
+   *
+   * The client's `connect` fires as soon as the handshake completes, so it can
+   * emit immediately. Everything below this point awaits the database, and an
+   * event that arrives before its listener exists is dropped by Socket.IO
+   * silently — no error, no ack, the message simply disappears. Registering
+   * first closes that window; the handlers only read `socket.userId`, which is
+   * already set by the auth middleware.
+   */
+  registerMessageHandlers(io, socket);
+  registerTypingHandlers(io, socket);
+  registerAssistantHandlers(io, socket);
+
   // Join all existing conversation rooms
   const list = await Conversation.find({ participants: userId }).select('_id participants').lean();
   for (const c of list) {
@@ -70,10 +84,6 @@ export async function wireConnection(io, socket) {
   } catch (err) {
     console.error('offline-delivered upgrade failed', err);
   }
-
-  registerMessageHandlers(io, socket);
-  registerTypingHandlers(io, socket);
-  registerAssistantHandlers(io, socket);
 
   socket.on(SOCKET_EVENTS.USER_ONLINE, () => {
     presenceRegistry.addSocket(userId, socket.id);

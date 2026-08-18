@@ -15,6 +15,15 @@ function ackOrNoop(cb) {
   return typeof cb === 'function' ? cb : () => {};
 }
 
+/** Maps a MIME type onto the Message model's `type` enum. */
+function inferMessageType(mimeType) {
+  if (!mimeType) return undefined;
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  return 'file';
+}
+
 /**
  * `send_message`: validate → persist → emit → ack.
  *
@@ -43,7 +52,17 @@ export function registerMessageHandlers(io, socket) {
         senderId,
         recipientId: data.recipientId,
         text: data.text,
-        clientId: data.clientId
+        clientId: data.clientId,
+        // Forward the media the client sent. These were being dropped here,
+        // so a voice note arrived as an empty bubble even when it validated.
+        type: data.type || inferMessageType(data.mediaType),
+        mediaUrl: data.mediaUrl,
+        mediaThumbnail: data.mediaThumbnail,
+        mediaType: data.mediaType,
+        mediaName: data.mediaName,
+        mediaSize: data.mediaSize,
+        mediaDuration: data.mediaDuration,
+        replyTo: data.replyTo
       });
 
       if (!reused) {

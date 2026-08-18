@@ -31,7 +31,15 @@ export function initSockets(httpServer) {
      * presence; raise them to be kinder to mobile batteries.
      */
     pingInterval: 10_000,
-    pingTimeout: 5_000
+    pingTimeout: 5_000,
+
+    /**
+     * Media rides the socket as a base64 data URL. The default 1MB buffer
+     * silently drops anything larger — the client's ack never arrives and the
+     * message just appears to fail. 4MB matches the ~3MB schema cap with room
+     * for the rest of the envelope.
+     */
+    maxHttpBufferSize: 4e6
   });
 
   io.use(socketAuthMiddleware);

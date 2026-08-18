@@ -53,8 +53,10 @@ const messageSchema = new mongoose.Schema(
       default: ''
     },
     /** Media fields */
-    mediaUrl: { type: String, default: null, maxlength: 2048 },
-    mediaThumbnail: { type: String, default: null, maxlength: 2048 },
+    // Media is inlined as a base64 data URL, so 2048 was far below what a
+    // single voice note or photo needs — every media message failed validation.
+    mediaUrl: { type: String, default: null, maxlength: 3000000 },
+    mediaThumbnail: { type: String, default: null, maxlength: 3000000 },
     mediaType: { type: String, default: null, maxlength: 128 },
     mediaSize: { type: Number, default: null },
     mediaName: { type: String, default: null, maxlength: 256 },
