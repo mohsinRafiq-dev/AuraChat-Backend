@@ -31,6 +31,27 @@ export const profile = asyncHandler(async (req, res) => {
   res.json({ user: serializeUser(user) });
 });
 
+/**
+ * Exchanges a still-valid token for a fresh one.
+ *
+ * Tokens are signed for JWT_EXPIRES_IN (7 days by default) with no way to
+ * extend them, so a user who kept the tab open — or simply came back on day
+ * eight — was logged out with no warning and no recourse. The client calls
+ * this on boot and periodically while the app is open, which turns a fixed
+ * 7-day window into a sliding one: stay away longer than the window and you
+ * log in again, but ordinary use never interrupts you.
+ *
+ * `authenticate` has already rejected an expired or tampered token by the time
+ * this runs, so reaching here means the caller currently holds a valid one.
+ */
+export const refresh = asyncHandler(async (req, res) => {
+  const user = await userService.findUserById(req.userId);
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  res.json({ token: signAccessToken(user._id), user: serializeUser(user) });
+});
+
 export const updateProfile = asyncHandler(async (req, res) => {
   const { avatarUrl, username, bio, statusMessage, phone, lastSeenVisibility, avatarVisibility } = req.body;
   const updated = await userService.updateUserProfile(req.userId, {
