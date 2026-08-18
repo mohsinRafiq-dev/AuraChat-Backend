@@ -5,6 +5,7 @@ import { presenceRegistry } from '../../services/presence.service.js';
 import { markDelivered } from '../../services/message.service.js';
 import { registerMessageHandlers } from './message.handler.js';
 import { registerTypingHandlers } from './typing.handler.js';
+import { registerAssistantHandlers } from './assistant.handler.js';
 
 /**
  * Collect all unique participant IDs across the user's conversations,
@@ -71,6 +72,7 @@ export async function wireConnection(io, socket) {
 
   registerMessageHandlers(io, socket);
   registerTypingHandlers(io, socket);
+  registerAssistantHandlers(io, socket);
 
   socket.on(SOCKET_EVENTS.USER_ONLINE, () => {
     presenceRegistry.addSocket(userId, socket.id);

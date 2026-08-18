@@ -41,6 +41,12 @@ export const SOCKET_EVENTS = {
   CALL_ICE_CANDIDATE: 'call:ice_candidate',
   CALL_SDP_OFFER: 'call:sdp_offer',
   CALL_SDP_ANSWER: 'call:sdp_answer',
+  // Aura (in-app assistant)
+  ASSISTANT_RUN: 'assistant:run',
+  ASSISTANT_START: 'assistant:start',
+  ASSISTANT_DELTA: 'assistant:delta',
+  ASSISTANT_DONE: 'assistant:done',
+  ASSISTANT_ERROR: 'assistant:error',
   // Misc
   SYNC_CONVERSATIONS: 'sync_conversations',
   HEARTBEAT: 'heartbeat'

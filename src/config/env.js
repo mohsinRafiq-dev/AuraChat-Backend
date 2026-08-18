@@ -39,13 +39,25 @@ export const env = {
     'insecure JWT signing'
   ),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  corsOrigin: process.env.CORS_ORIGIN || '*',
+  /** Comma-separated list is supported so preview deploys can share one backend. */
+  corsOrigin: (() => {
+    const raw = process.env.CORS_ORIGIN?.trim();
+    if (!raw || raw === '*') return '*';
+    const list = raw.split(',').map((s) => s.trim()).filter(Boolean);
+    return list.length === 1 ? list[0] : list;
+  })(),
+  /** Number of reverse proxies in front of the app. 0 = direct (local dev). */
+  trustProxy: Number(process.env.TRUST_PROXY) || 0,
   /** Web client ID from Google Cloud Console (used to verify ID tokens from the SPA). */
   googleClientId: process.env.GOOGLE_CLIENT_ID?.trim() || null,
   /** Optional; only needed for authorization-code / refresh-token flows (not used for GIS ID tokens). */
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET?.trim() || null,
   /** e.g. redis://127.0.0.1:6379 — enables `@socket.io/redis-adapter` for multi-node. */
   redisUrl: process.env.REDIS_URL?.trim() || null,
+  /** Powers Aura, the in-app assistant. When unset, Aura is simply unavailable. */
+  geminiApiKey: process.env.GEMINI_API_KEY?.trim() || null,
+  /** Pin an explicit model id here; the default favours latency for in-chat replies. */
+  geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-flash-latest',
   /**
    * When true, HTTP + sockets use a fixed dev user (no JWT).
    * In development, defaults to ON unless you set SKIP_AUTH=false.
