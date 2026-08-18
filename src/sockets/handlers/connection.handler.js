@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Conversation } from '../../models/Conversation.model.js';
 import { Message } from '../../models/Message.model.js';
 import { SOCKET_EVENTS } from '../../constants/socketEvents.js';
@@ -108,6 +109,14 @@ export async function wireConnection(io, socket) {
     // a phone still counts as online.
     if (!presenceRegistry.isUserOnline(userId)) {
       const lastSeen = new Date();
+
+      // During shutdown, `io.disconnectSockets()` fires these handlers without
+      // awaiting them, so the database can already be closing by the time we
+      // get here. Writing then throws MongoNotConnectedError and logs a stack
+      // for every connected user on every restart. There is nothing useful to
+      // persist or broadcast at that point.
+      if (mongoose.connection.readyState !== 1) return;
+
       try {
         // Persist first, so a partner who loads the app a moment later reads
         // the same timestamp the live event carried.

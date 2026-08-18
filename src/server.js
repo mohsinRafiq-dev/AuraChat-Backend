@@ -21,6 +21,11 @@ async function shutdown(signal) {
   clearInterval(heartbeatTimer);
   try {
     io.disconnectSockets(true);
+    // `disconnectSockets` fires each socket's disconnect handler but does not
+    // await it, and those handlers persist last-seen timestamps. Closing the
+    // database immediately cut them off mid-write. A short grace period lets
+    // them finish; the readyState guard in the handler covers anything slower.
+    await new Promise((resolve) => setTimeout(resolve, 250));
     await disconnectRedisAdapter();
     await disconnectDatabase();
   } catch (e) {
