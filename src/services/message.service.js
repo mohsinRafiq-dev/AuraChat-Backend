@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { Message } from '../models/Message.model.js';
+import { Conversation } from '../models/Conversation.model.js';
 import { User } from '../models/User.model.js';
 import { AppError } from '../utils/AppError.js';
 import * as conversationService from './conversation.service.js';
@@ -83,7 +84,9 @@ export async function createMessageInConversation({
       text: doc.text,
       type: doc.type,
       senderId: doc.senderId,
-      createdAt: doc.createdAt
+      createdAt: doc.createdAt,
+      messageId: doc._id,
+      status: 'sent'
     });
 
     return { doc, reused: false };
@@ -259,10 +262,13 @@ export async function searchMessages(userId, query, conversationId) {
 
 export async function markDelivered(messageId) {
   await Message.findByIdAndUpdate(messageId, { deliveredAt: new Date() });
+  // Keep the conversation-list tick in step with the thread's.
+  await conversationService.updateLastMessageStatus(messageId, 'delivered');
 }
 
 export async function markRead(messageId) {
   await Message.findByIdAndUpdate(messageId, { readAt: new Date() });
+  await conversationService.updateLastMessageStatus(messageId, 'read');
 }
 
 export async function markConversationRead(conversationId, recipientId) {
@@ -288,6 +294,14 @@ export async function markConversationRead(conversationId, recipientId) {
       readAt: { $exists: false }
     },
     { readAt: now }
+  );
+
+  // Opening a chat reads everything in it, so the sender's conversation-list
+  // tick should turn blue too — but only if the newest message was theirs,
+  // not this reader's own.
+  await Conversation.updateOne(
+    { _id: convoOid, 'lastMessage.senderId': { $ne: uid } },
+    { $set: { 'lastMessage.status': 'read' } }
   );
 
   if (result.modifiedCount === 0) {

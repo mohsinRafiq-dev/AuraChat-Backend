@@ -81,11 +81,35 @@ export async function findOrCreateDirectConversation(currentUserId, otherUserId)
   }
 }
 
-export async function updateLastMessage(conversationId, { text, type, senderId, createdAt }) {
+export async function updateLastMessage(
+  conversationId,
+  { text, type, senderId, createdAt, messageId, status }
+) {
   await Conversation.findByIdAndUpdate(conversationId, {
-    lastMessage: { text, type: type ?? 'text', senderId, createdAt },
+    lastMessage: {
+      text,
+      type: type ?? 'text',
+      senderId,
+      createdAt,
+      messageId: messageId ?? null,
+      status: status ?? 'sent'
+    },
     updatedAt: new Date()
   });
+}
+
+/**
+ * Advances the delivery status shown against a conversation's last message.
+ *
+ * Scoped by `lastMessage.messageId` so a status change on an older message is
+ * ignored — the preview should only ever reflect the newest one.
+ */
+export async function updateLastMessageStatus(messageId, status) {
+  if (!messageId) return;
+  await Conversation.updateOne(
+    { 'lastMessage.messageId': toObjectId(messageId) },
+    { $set: { 'lastMessage.status': status } }
+  );
 }
 
 export async function deleteConversationForUser(conversationId, userId) {

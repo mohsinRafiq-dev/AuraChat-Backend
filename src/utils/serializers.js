@@ -103,6 +103,8 @@ export function serializeConversation(doc, currentUserId) {
           text: o.lastMessage.text ?? '',
           type: o.lastMessage.type ?? 'text',
           senderId: o.lastMessage.senderId ? String(o.lastMessage.senderId) : undefined,
+          messageId: o.lastMessage.messageId ? String(o.lastMessage.messageId) : null,
+          status: o.lastMessage.status ?? 'sent',
           createdAt:
             o.lastMessage.createdAt instanceof Date
               ? o.lastMessage.createdAt.toISOString()

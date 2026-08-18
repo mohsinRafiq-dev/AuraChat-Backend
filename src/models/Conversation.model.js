@@ -5,6 +5,10 @@ const lastMessageSchema = new mongoose.Schema(
     text: { type: String, maxlength: 8000, default: '' },
     type: { type: String, default: 'text' },
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    /* Carried so the conversation list can show a delivery tick next to your own
+       last message, and update it in place when the status changes. */
+    messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+    status: { type: String, enum: ['sent', 'delivered', 'read'], default: 'sent' },
     createdAt: { type: Date, required: true }
   },
   { _id: false }
